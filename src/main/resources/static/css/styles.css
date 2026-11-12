@@ -1,0 +1,58 @@
+/* Contenido frontend generado por Claude (Anthropic) para el proyecto TicketFlow. */
+:root{
+  --ink:#0f1b33; --paper:#f2f5f7; --card:#fff; --line:#d5dce3; --muted:#5d6b7e;
+  --blue:#2447e8; --ok:#0b7a56; --okbg:#d9f3e8; --bad:#b3262b; --badbg:#fbe0e1;
+}
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.5 "Schibsted Grotesk",system-ui,sans-serif;background:var(--paper);color:var(--ink)}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+
+header{background:var(--ink);color:#fff;display:flex;flex-wrap:wrap;align-items:center;gap:.5rem 1.5rem;padding:.75rem clamp(1rem,4vw,3rem)}
+.logo{font-weight:900;font-size:1.35rem;letter-spacing:-.02em;text-decoration:none;margin-right:auto}
+nav{display:flex;flex-wrap:wrap;gap:.25rem}
+nav a{color:#cfd8e8;text-decoration:none;padding:.4rem .7rem;border-radius:6px}
+nav a[aria-current=page]{background:#fff;color:var(--ink);font-weight:700}
+
+main{max-width:60rem;margin:0 auto;padding:2rem clamp(1rem,4vw,2rem) 4rem}
+h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.05;letter-spacing:-.03em;font-weight:900;margin:0 0 .5rem}
+h2{font-size:1.2rem;margin:0 0 .5rem}
+.lead{color:var(--muted);margin:0 0 1.5rem;max-width:52ch}
+
+button{font:inherit;font-weight:700;border:0;border-radius:8px;padding:.6rem 1.1rem;background:var(--blue);color:#fff;cursor:pointer}
+button:disabled{opacity:.5;cursor:not-allowed}
+input{font:inherit;padding:.55rem .75rem;border:2px solid var(--line);border-radius:8px;background:#fff;width:100%}
+input[readonly]{background:var(--paper);color:var(--muted)}
+label{font-weight:500;display:block;margin:.8rem 0 .25rem}
+form button{margin-top:1.1rem}
+
+.panel{background:var(--card);border-radius:10px;padding:1.25rem 1.5rem;box-shadow:0 1px 0 var(--line);margin-bottom:1.25rem}
+.estrecho{max-width:26rem}
+.aviso{background:var(--badbg);color:var(--bad);border-radius:8px;padding:.7rem 1rem;margin-top:1rem}
+.aviso ul{margin:.3rem 0 0;padding-left:1.2rem}
+.empty{padding:2rem;border:2px dashed var(--line);border-radius:10px;color:var(--muted)}
+.tag{font-size:.85rem;font-weight:700;padding:.15rem .6rem;border-radius:99px;background:var(--okbg);color:var(--ok)}
+
+/* Talón de entrada: motivo visual del proyecto */
+.stub{display:grid;grid-template-columns:5.5rem 1fr auto;background:var(--card);border-radius:10px;margin-bottom:.75rem;position:relative;box-shadow:0 1px 0 var(--line)}
+.stub::before,.stub::after{content:"";position:absolute;left:calc(5.5rem - 9px);width:18px;height:18px;border-radius:50%;background:var(--paper)}
+.stub::before{top:-9px}
+.stub::after{bottom:-9px}
+.stub .date{border-right:2px dashed var(--line);text-align:center;padding:1rem .5rem;display:flex;flex-direction:column;justify-content:center}
+.stub .day{font-size:2.2rem;font-weight:900;line-height:1}
+.stub .mon{color:var(--muted);font-size:.9rem}
+.stub .body{padding:1rem 1.25rem}
+.stub .body h3{margin:0;font-size:1.2rem}
+.stub .body p{margin:.15rem 0 0;color:var(--muted)}
+.stub .side{padding:1rem 1.25rem;display:flex;align-items:center}
+
+#toast{position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:.7rem 1.2rem;border-radius:8px;max-width:90vw}
+#toast.err{background:var(--bad)}
+#toast[hidden]{display:none}
+
+@media(max-width:600px){
+  .stub{grid-template-columns:4.2rem 1fr}
+  .stub::before,.stub::after{left:calc(4.2rem - 9px)}
+  .stub .side{display:none}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}

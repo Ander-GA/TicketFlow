@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.security.core.AuthenticationException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -39,5 +40,12 @@ public class GlobalExceptionHandler {
         respuesta.put("errores", errores);
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(respuesta);
+    }
+    // Ajuste sugerido por Claude (Anthropic) para que el frontend reciba un 401 claro al fallar el login.
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<?> gestionarAutenticacionFallida(AuthenticationException ex) {
+        Map<String, Object> respuesta = new LinkedHashMap<>();
+        respuesta.put("mensaje", "Correo o contraseña incorrectos.");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(respuesta);
     }
 }

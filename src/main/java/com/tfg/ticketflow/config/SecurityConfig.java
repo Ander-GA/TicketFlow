@@ -22,7 +22,8 @@ public class SecurityConfig {
 
         http
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/", "/error").permitAll()
+                // Frontend generado por Claude (Anthropic): permite servir los archivos estáticos de la interfaz.
+                .requestMatchers("/", "/index.html", "/css/**", "/js/**", "/favicon.ico", "/error").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/eventos/**").permitAll()
                 // Registro de usuarios
                 .requestMatchers(HttpMethod.POST, "/api/v1/usuarios/registro").permitAll()
