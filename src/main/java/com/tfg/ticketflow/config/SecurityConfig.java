@@ -22,9 +22,11 @@ public class SecurityConfig {
 
         http
             .authorizeHttpRequests(auth -> auth
-                // Frontend generado por Claude (Anthropic): permite servir los archivos estáticos de la interfaz.
                 .requestMatchers("/", "/index.html", "/css/**", "/js/**", "/favicon.ico", "/error").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/eventos/mis-eventos").hasRole("ORGANIZADOR")
                 .requestMatchers(HttpMethod.GET, "/api/v1/eventos/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/eventos").hasRole("ORGANIZADOR")
+                .requestMatchers(HttpMethod.PUT, "/api/v1/eventos/**").hasRole("ORGANIZADOR")
                 // Registro de usuarios
                 .requestMatchers(HttpMethod.POST, "/api/v1/usuarios/registro").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
@@ -52,7 +54,10 @@ public class SecurityConfig {
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
             .oauth2ResourceServer(oauth2 -> oauth2
-                .jwt(jwt -> {}));
+                .jwt(jwt -> jwt
+                    .jwtAuthenticationConverter(jwtAuthenticationConverter())
+                )
+);
         return http.build();
     }
 
