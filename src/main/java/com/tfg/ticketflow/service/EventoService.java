@@ -190,6 +190,7 @@ public class EventoService {
         return eventoRepository.save(evento);
     }
 
+
     // Obtener eventos publicados aplicando filtros opcionales
     public List<Evento> obtenerEventosPublicados(String titulo, String ubicacion) {
 
