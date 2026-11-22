@@ -171,4 +171,36 @@ public class EventoService {
         return eventoRepository.save(evento);
     }
 
+    // Retirar un evento publicado
+    public Evento retirarEvento(Long id, Usuario organizador) {
+
+        // Buscar el evento comprobando que pertenece al organizador
+        Evento evento = eventoRepository.findByIdAndOrganizador(id, organizador)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No se ha encontrado el evento o no pertenece al organizador."));
+
+        // Comprobar que el evento esté publicado
+        if (evento.getEstado() != Evento.EstadoEvento.PUBLICADO) {
+            throw new IllegalArgumentException("Solo se pueden retirar eventos publicados.");
+        }
+
+        // Cambiar el estado del evento a borrador
+        evento.setEstado(Evento.EstadoEvento.BORRADOR);
+
+        return eventoRepository.save(evento);
+    }
+
+    // Obtener eventos publicados aplicando filtros opcionales
+    public List<Evento> obtenerEventosPublicados(String titulo, String ubicacion) {
+
+        // Normalizar los filtros recibidos
+        String tituloFiltro = (titulo == null || titulo.isBlank()) ? null : titulo.trim();
+        String ubicacionFiltro = (ubicacion == null || ubicacion.isBlank()) ? null : ubicacion.trim();
+
+        return eventoRepository.buscarEventosFiltrados(
+                Evento.EstadoEvento.PUBLICADO,
+                tituloFiltro,
+                ubicacionFiltro);
+    }
+
 }

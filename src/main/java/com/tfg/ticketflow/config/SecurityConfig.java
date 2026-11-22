@@ -34,6 +34,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PUT, "/api/v1/eventos/**").hasRole("ORGANIZADOR")
                 .requestMatchers(HttpMethod.PATCH, "/api/v1/eventos/*/publicar").hasRole("ORGANIZADOR")
                 .requestMatchers(HttpMethod.PATCH, "/api/v1/eventos/*/cancelar").hasRole("ORGANIZADOR")
+                .requestMatchers(HttpMethod.PATCH, "/api/v1/eventos/*/finalizar").hasRole("ORGANIZADOR")
+                .requestMatchers(HttpMethod.PATCH, "/api/v1/eventos/*/retirar").hasRole("ORGANIZADOR")
 
                 // Registro e inicio de sesión
                 .requestMatchers(HttpMethod.POST, "/api/v1/usuarios/registro").permitAll()

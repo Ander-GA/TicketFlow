@@ -33,6 +33,7 @@ public class EventoController {
         }
 
         // Crear un evento
+        @SecurityRequirement(name = "bearerAuth")
         @PostMapping
         public ResponseEntity<EventoRespuestaDTO> crearEvento(@Valid @RequestBody EventoCreacionDTO datos, Authentication autenticacion) {
 

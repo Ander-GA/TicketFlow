@@ -50,7 +50,7 @@ const views = {
       (lista.length ? lista.map(e => {
         const d = new Date(e.fechaInicio), ok = !isNaN(d);
         return `<div class="stub"><div class="date"><span class="day">${ok ? d.getDate() : '–'}</span><span class="mon">${ok ? d.toLocaleDateString('es-ES', { month: 'short' }) : ''}</span></div>
-          <div class="body"><h3>${h(e.nombre)}</h3><p>${h(e.lugar)}</p></div><div class="side"></div></div>`;
+          <div class="body"><h3>${h(e.titulo)}</h3><p>${h(e.ubicacion)}</p></div>`;
       }).join('') : `<div class="empty">${h(aviso || 'No hay eventos publicados por ahora.')}</div>`));
   },
 
