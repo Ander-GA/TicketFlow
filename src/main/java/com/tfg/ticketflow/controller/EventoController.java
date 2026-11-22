@@ -7,13 +7,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 import com.tfg.ticketflow.dto.evento.EventoActualizacionDTO;
 import com.tfg.ticketflow.dto.evento.EventoCreacionDTO;
 import com.tfg.ticketflow.dto.evento.EventoRespuestaDTO;
 import com.tfg.ticketflow.entity.Evento;
 import com.tfg.ticketflow.entity.Usuario;
+import com.tfg.ticketflow.exception.RecursoNoEncontradoException;
 import com.tfg.ticketflow.service.EventoService;
 import com.tfg.ticketflow.service.UsuarioService;
 
@@ -37,11 +37,12 @@ public class EventoController {
         @PostMapping
         public ResponseEntity<EventoRespuestaDTO> crearEvento(@Valid @RequestBody EventoCreacionDTO datos, Authentication autenticacion) {
 
-                // Recuperamos el organizador a partir del usuario autenticado
+                // Recuperar el organizador autenticado
                 Usuario organizador = usuarioService.buscarPorEmail(autenticacion.getName())
-                        .orElseThrow(() -> new IllegalArgumentException("No se ha encontrado el usuario."));
+                        .orElseThrow(() -> new RecursoNoEncontradoException(
+                                "No se ha encontrado el usuario."));
 
-                // Creamos el evento
+                // Crear el evento
                 Evento evento = eventoService.crearEvento(
                         datos.getTitulo(),
                         datos.getDescripcion(),
@@ -53,7 +54,7 @@ public class EventoController {
                         organizador
                 );
 
-                // Convertimos la entidad en DTO de respuesta
+                // Convertir la entidad en DTO de respuesta
                 EventoRespuestaDTO respuesta = new EventoRespuestaDTO(evento);
 
                 return ResponseEntity.status(HttpStatus.CREATED).body(respuesta);
@@ -61,9 +62,7 @@ public class EventoController {
 
         // Obtener eventos publicados aplicando filtros opcionales
         @GetMapping
-        public ResponseEntity<List<EventoRespuestaDTO>> obtenerEventosPublicados(
-                @RequestParam(required = false) String titulo,
-                @RequestParam(required = false) String ubicacion) {
+        public ResponseEntity<List<EventoRespuestaDTO>> obtenerEventosPublicados(@RequestParam(required = false) String titulo,@RequestParam(required = false) String ubicacion) {
 
                 List<EventoRespuestaDTO> eventos = eventoService.obtenerEventosPublicados(titulo, ubicacion)
                         .stream()
@@ -73,25 +72,28 @@ public class EventoController {
                 return ResponseEntity.ok(eventos);
         }
 
-    // Obtener un evento publicado por su identificador
+        // Obtener un evento publicado por su identificador
         @GetMapping("/{id}")
         public ResponseEntity<EventoRespuestaDTO> obtenerEvento(@PathVariable Long id) {
 
                 Evento evento = eventoService.buscarEventoPublicado(id)
-                        .orElseThrow(() -> new ResponseStatusException(
-                                HttpStatus.NOT_FOUND, "No se ha encontrado el evento."));
+                        .orElseThrow(() -> new RecursoNoEncontradoException(
+                                "No se ha encontrado el evento."));
 
                 EventoRespuestaDTO respuesta = new EventoRespuestaDTO(evento);
 
                 return ResponseEntity.ok(respuesta);
         }
+
         // Obtener todos los eventos del organizador autenticado
         @SecurityRequirement(name = "bearerAuth")
         @GetMapping("/mis-eventos")
-        public ResponseEntity<List<EventoRespuestaDTO>> obtenerMisEventos(Authentication autenticacion) {
+        public ResponseEntity<List<EventoRespuestaDTO>> obtenerMisEventos( Authentication autenticacion) {
 
+                // Recuperar el organizador autenticado
                 Usuario organizador = usuarioService.buscarPorEmail(autenticacion.getName())
-                        .orElseThrow(() -> new IllegalArgumentException("No se ha encontrado el usuario."));
+                        .orElseThrow(() -> new RecursoNoEncontradoException(
+                                "No se ha encontrado el usuario."));
 
                 List<EventoRespuestaDTO> eventos = eventoService.obtenerEventosDelOrganizador(organizador)
                         .stream()
@@ -106,9 +108,12 @@ public class EventoController {
         @PutMapping("/{id}")
         public ResponseEntity<EventoRespuestaDTO> actualizarEvento(@PathVariable Long id, @Valid @RequestBody EventoActualizacionDTO datos, Authentication autenticacion) {
 
+                // Recuperar el organizador autenticado
                 Usuario organizador = usuarioService.buscarPorEmail(autenticacion.getName())
-                        .orElseThrow(() -> new IllegalArgumentException("No se ha encontrado el usuario."));
+                        .orElseThrow(() -> new RecursoNoEncontradoException(
+                                "No se ha encontrado el usuario."));
 
+                // Actualizar el evento
                 Evento evento = eventoService.actualizarEvento(
                         id,
                         organizador,
@@ -129,16 +134,16 @@ public class EventoController {
         // Publicar un evento
         @SecurityRequirement(name = "bearerAuth")
         @PatchMapping("/{id}/publicar")
-        public ResponseEntity<EventoRespuestaDTO> publicarEvento(@PathVariable Long id, Authentication autenticacion) {
+        public ResponseEntity<EventoRespuestaDTO> publicarEvento(@PathVariable Long id,Authentication autenticacion) {
 
                 // Recuperar el organizador autenticado
                 Usuario organizador = usuarioService.buscarPorEmail(autenticacion.getName())
-                        .orElseThrow(() -> new IllegalArgumentException("No se ha encontrado el usuario."));
+                        .orElseThrow(() -> new RecursoNoEncontradoException(
+                                "No se ha encontrado el usuario."));
 
                 // Publicar el evento
                 Evento evento = eventoService.publicarEvento(id, organizador);
 
-                // Convertir la entidad en DTO de respuesta
                 EventoRespuestaDTO respuesta = new EventoRespuestaDTO(evento);
 
                 return ResponseEntity.ok(respuesta);
@@ -151,12 +156,12 @@ public class EventoController {
 
                 // Recuperar el organizador autenticado
                 Usuario organizador = usuarioService.buscarPorEmail(autenticacion.getName())
-                        .orElseThrow(() -> new IllegalArgumentException("No se ha encontrado el usuario."));
+                        .orElseThrow(() -> new RecursoNoEncontradoException(
+                                "No se ha encontrado el usuario."));
 
                 // Cancelar el evento
                 Evento evento = eventoService.cancelarEvento(id, organizador);
 
-                // Convertir la entidad en DTO de respuesta
                 EventoRespuestaDTO respuesta = new EventoRespuestaDTO(evento);
 
                 return ResponseEntity.ok(respuesta);
@@ -167,9 +172,12 @@ public class EventoController {
         @PatchMapping("/{id}/finalizar")
         public ResponseEntity<EventoRespuestaDTO> finalizarEvento(@PathVariable Long id, Authentication autenticacion) {
 
+                // Recuperar el organizador autenticado
                 Usuario organizador = usuarioService.buscarPorEmail(autenticacion.getName())
-                        .orElseThrow(() -> new IllegalArgumentException("No se ha encontrado el usuario."));
+                        .orElseThrow(() -> new RecursoNoEncontradoException(
+                                "No se ha encontrado el usuario."));
 
+                // Finalizar el evento
                 Evento evento = eventoService.finalizarEvento(id, organizador);
 
                 EventoRespuestaDTO respuesta = new EventoRespuestaDTO(evento);
@@ -180,11 +188,14 @@ public class EventoController {
         // Retirar un evento publicado
         @SecurityRequirement(name = "bearerAuth")
         @PatchMapping("/{id}/retirar")
-        public ResponseEntity<EventoRespuestaDTO> retirarEvento(@PathVariable Long id, Authentication autenticacion) {
+        public ResponseEntity<EventoRespuestaDTO> retirarEvento( @PathVariable Long id, Authentication autenticacion) {
 
+                // Recuperar el organizador autenticado
                 Usuario organizador = usuarioService.buscarPorEmail(autenticacion.getName())
-                        .orElseThrow(() -> new IllegalArgumentException("No se ha encontrado el usuario."));
+                        .orElseThrow(() -> new RecursoNoEncontradoException(
+                                "No se ha encontrado el usuario."));
 
+                // Retirar el evento
                 Evento evento = eventoService.retirarEvento(id, organizador);
 
                 EventoRespuestaDTO respuesta = new EventoRespuestaDTO(evento);

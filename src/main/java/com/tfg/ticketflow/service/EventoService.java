@@ -1,3 +1,4 @@
+
 package com.tfg.ticketflow.service;
 
 import java.time.LocalDateTime;
@@ -8,6 +9,8 @@ import org.springframework.stereotype.Service;
 
 import com.tfg.ticketflow.entity.Evento;
 import com.tfg.ticketflow.entity.Usuario;
+import com.tfg.ticketflow.exception.ConflictoNegocioException;
+import com.tfg.ticketflow.exception.RecursoNoEncontradoException;
 import com.tfg.ticketflow.repository.EventoRepository;
 
 @Service
@@ -30,56 +33,91 @@ public class EventoService {
     }
 
     // Crear un evento
-    public Evento crearEvento(String titulo, String descripcion, LocalDateTime fechaInicio, LocalDateTime fechaFin, String ubicacion, String direccion, String imagen, Usuario organizador) {
+    public Evento crearEvento(String titulo, String descripcion, LocalDateTime fechaInicio,
+            LocalDateTime fechaFin, String ubicacion, String direccion, String imagen,
+            Usuario organizador) {
 
         // Comprobar que la fecha de fin sea posterior a la fecha de inicio
         if (fechaFin != null && !fechaFin.isAfter(fechaInicio)) {
-            throw new IllegalArgumentException("La fecha de fin debe ser posterior a la fecha de inicio.");
+            throw new IllegalArgumentException(
+                    "La fecha de fin debe ser posterior a la fecha de inicio.");
         }
 
-        Evento evento = new Evento(titulo, descripcion, fechaInicio, fechaFin, ubicacion, direccion, imagen, organizador);
+        Evento evento = new Evento(
+                titulo,
+                descripcion,
+                fechaInicio,
+                fechaFin,
+                ubicacion,
+                direccion,
+                imagen,
+                organizador
+        );
 
         return eventoRepository.save(evento);
     }
-
 
     // Obtener todos los eventos publicados
     public List<Evento> obtenerEventosPublicados() {
         return eventoRepository.findByEstado(Evento.EstadoEvento.PUBLICADO);
     }
-    
+
+    // Obtener eventos publicados aplicando filtros opcionales
+    public List<Evento> obtenerEventosPublicados(String titulo, String ubicacion) {
+
+        // Normalizar los filtros recibidos
+        String tituloFiltro = (titulo == null || titulo.isBlank())
+                ? null : titulo.trim();
+
+        String ubicacionFiltro = (ubicacion == null || ubicacion.isBlank())
+                ? null : ubicacion.trim();
+
+        return eventoRepository.buscarEventosFiltrados(
+                Evento.EstadoEvento.PUBLICADO,
+                tituloFiltro,
+                ubicacionFiltro
+        );
+    }
+
     // Buscar un evento publicado por su identificador
     public Optional<Evento> buscarEventoPublicado(Long id) {
 
         Optional<Evento> evento = eventoRepository.findById(id);
 
+        // Comprobar que el evento existe y está publicado
         if (evento.isEmpty() || evento.get().getEstado() != Evento.EstadoEvento.PUBLICADO) {
             return Optional.empty();
         }
 
         return evento;
     }
+
     // Obtener todos los eventos de un organizador
     public List<Evento> obtenerEventosDelOrganizador(Usuario organizador) {
         return eventoRepository.findByOrganizador(organizador);
     }
 
     // Actualizar los datos de un evento
-    public Evento actualizarEvento(Long id, Usuario organizador, String titulo, String descripcion, LocalDateTime fechaInicio, LocalDateTime fechaFin, String ubicacion, String direccion, String imagen) {
+    public Evento actualizarEvento(Long id, Usuario organizador, String titulo,
+            String descripcion, LocalDateTime fechaInicio, LocalDateTime fechaFin,
+            String ubicacion, String direccion, String imagen) {
+
         // Buscar el evento comprobando que pertenece al organizador
         Evento evento = eventoRepository.findByIdAndOrganizador(id, organizador)
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new RecursoNoEncontradoException(
                         "No se ha encontrado el evento o no pertenece al organizador."));
 
         // Comprobar que el evento se puede modificar
         if (evento.getEstado() == Evento.EstadoEvento.CANCELADO
                 || evento.getEstado() == Evento.EstadoEvento.FINALIZADO) {
-            throw new IllegalArgumentException("No se puede modificar un evento cancelado o finalizado.");
+            throw new ConflictoNegocioException(
+                    "No se puede modificar un evento cancelado o finalizado.");
         }
 
         // Comprobar que la fecha de fin sea posterior a la fecha de inicio
         if (fechaFin != null && !fechaFin.isAfter(fechaInicio)) {
-            throw new IllegalArgumentException("La fecha de fin debe ser posterior a la fecha de inicio.");
+            throw new IllegalArgumentException(
+                    "La fecha de fin debe ser posterior a la fecha de inicio.");
         }
 
         // Actualizar los datos del evento
@@ -99,17 +137,19 @@ public class EventoService {
 
         // Buscar el evento comprobando que pertenece al organizador
         Evento evento = eventoRepository.findByIdAndOrganizador(id, organizador)
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new RecursoNoEncontradoException(
                         "No se ha encontrado el evento o no pertenece al organizador."));
 
         // Comprobar que el evento está en borrador
         if (evento.getEstado() != Evento.EstadoEvento.BORRADOR) {
-            throw new IllegalArgumentException("Solo se pueden publicar eventos en borrador.");
+            throw new ConflictoNegocioException(
+                    "Solo se pueden publicar eventos en borrador.");
         }
 
         // Comprobar que el evento todavía no ha comenzado
         if (!evento.getFechaInicio().isAfter(LocalDateTime.now())) {
-            throw new IllegalArgumentException("No se puede publicar un evento cuya fecha de inicio ya ha pasado.");
+            throw new ConflictoNegocioException(
+                    "No se puede publicar un evento cuya fecha de inicio ya ha pasado.");
         }
 
         // Cambiar el estado del evento a publicado
@@ -123,17 +163,19 @@ public class EventoService {
 
         // Buscar el evento comprobando que pertenece al organizador
         Evento evento = eventoRepository.findByIdAndOrganizador(id, organizador)
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new RecursoNoEncontradoException(
                         "No se ha encontrado el evento o no pertenece al organizador."));
 
         // Comprobar que el evento no esté cancelado
         if (evento.getEstado() == Evento.EstadoEvento.CANCELADO) {
-            throw new IllegalArgumentException("El evento ya está cancelado.");
+            throw new ConflictoNegocioException(
+                    "El evento ya está cancelado.");
         }
 
         // Comprobar que el evento no esté finalizado
         if (evento.getEstado() == Evento.EstadoEvento.FINALIZADO) {
-            throw new IllegalArgumentException("No se puede cancelar un evento finalizado.");
+            throw new ConflictoNegocioException(
+                    "No se puede cancelar un evento finalizado.");
         }
 
         // Cambiar el estado del evento a cancelado
@@ -147,12 +189,13 @@ public class EventoService {
 
         // Buscar el evento comprobando que pertenece al organizador
         Evento evento = eventoRepository.findByIdAndOrganizador(id, organizador)
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new RecursoNoEncontradoException(
                         "No se ha encontrado el evento o no pertenece al organizador."));
 
         // Comprobar que el evento está publicado
         if (evento.getEstado() != Evento.EstadoEvento.PUBLICADO) {
-            throw new IllegalArgumentException("Solo se pueden finalizar eventos publicados.");
+            throw new ConflictoNegocioException(
+                    "Solo se pueden finalizar eventos publicados.");
         }
 
         // Determinar la fecha a partir de la cual se puede finalizar
@@ -162,7 +205,8 @@ public class EventoService {
 
         // Comprobar que el evento ha alcanzado esa fecha
         if (LocalDateTime.now().isBefore(fechaLimite)) {
-            throw new IllegalArgumentException("El evento todavía no puede finalizarse.");
+            throw new ConflictoNegocioException(
+                    "El evento todavía no puede finalizarse.");
         }
 
         // Cambiar el estado del evento a finalizado
@@ -176,12 +220,13 @@ public class EventoService {
 
         // Buscar el evento comprobando que pertenece al organizador
         Evento evento = eventoRepository.findByIdAndOrganizador(id, organizador)
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new RecursoNoEncontradoException(
                         "No se ha encontrado el evento o no pertenece al organizador."));
 
         // Comprobar que el evento esté publicado
         if (evento.getEstado() != Evento.EstadoEvento.PUBLICADO) {
-            throw new IllegalArgumentException("Solo se pueden retirar eventos publicados.");
+            throw new ConflictoNegocioException(
+                    "Solo se pueden retirar eventos publicados.");
         }
 
         // Cambiar el estado del evento a borrador
@@ -189,19 +234,4 @@ public class EventoService {
 
         return eventoRepository.save(evento);
     }
-
-
-    // Obtener eventos publicados aplicando filtros opcionales
-    public List<Evento> obtenerEventosPublicados(String titulo, String ubicacion) {
-
-        // Normalizar los filtros recibidos
-        String tituloFiltro = (titulo == null || titulo.isBlank()) ? null : titulo.trim();
-        String ubicacionFiltro = (ubicacion == null || ubicacion.isBlank()) ? null : ubicacion.trim();
-
-        return eventoRepository.buscarEventosFiltrados(
-                Evento.EstadoEvento.PUBLICADO,
-                tituloFiltro,
-                ubicacionFiltro);
-    }
-
 }
