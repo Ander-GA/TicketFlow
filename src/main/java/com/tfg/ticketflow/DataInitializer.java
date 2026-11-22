@@ -123,15 +123,9 @@ public class DataInitializer implements CommandLineRunner {
                 );
         }
 
-        private void crearUsuarioSiNoExiste(String nombre,
-                String apellidos,
-                String email,
-                String password,
-                Usuario.Rol rol,
-                String telefono) {
-
+        private void crearUsuarioSiNoExiste(String nombre, String apellidos,String email, String password, Usuario.Rol rol, String telefono) {
                 if (usuarioRepository.existsByEmail(email)) {
-                return;
+                        return;
                 }
 
                 String passwordHash = passwordEncoder.encode(password);
@@ -151,16 +145,7 @@ public class DataInitializer implements CommandLineRunner {
                 usuarioRepository.save(usuario);
         }
 
-        private void crearEventoSiNoExiste(String titulo,
-                String descripcion,
-                LocalDateTime fechaInicio,
-                LocalDateTime fechaFin,
-                String ubicacion,
-                String direccion,
-                String imagen,
-                Usuario organizador,
-                Evento.EstadoEvento estado) {
-
+        private void crearEventoSiNoExiste(String titulo, String descripcion, LocalDateTime fechaInicio, LocalDateTime fechaFin, String ubicacion, String direccion, String imagen, Usuario organizador, Evento.EstadoEvento estado) {
                 if (eventoRepository.existsByTituloAndOrganizador(titulo, organizador)) {
                         return;
                 }

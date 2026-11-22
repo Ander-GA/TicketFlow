@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import com.tfg.ticketflow.entity.Evento;
 import com.tfg.ticketflow.entity.Usuario;
@@ -22,4 +24,17 @@ public interface EventoRepository extends JpaRepository<Evento, Long> {
 
     // Buscar un evento por su identificador y organizador
     Optional<Evento> findByIdAndOrganizador(Long id, Usuario organizador);
+
+    // Buscar eventos publicados mediante filtros opcionales
+    @Query("""
+            SELECT e FROM Evento e
+            WHERE e.estado = :estado
+            AND (:titulo IS NULL OR LOWER(e.titulo) LIKE LOWER(CONCAT('%', :titulo, '%')))
+            AND (:ubicacion IS NULL OR LOWER(e.ubicacion) LIKE LOWER(CONCAT('%', :ubicacion, '%')))
+            """)
+    List<Evento> buscarEventosFiltrados(
+            @Param("estado") Evento.EstadoEvento estado,
+            @Param("titulo") String titulo,
+            @Param("ubicacion") String ubicacion);
+
 }

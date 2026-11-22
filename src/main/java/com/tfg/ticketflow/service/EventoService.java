@@ -32,10 +32,16 @@ public class EventoService {
     // Crear un evento
     public Evento crearEvento(String titulo, String descripcion, LocalDateTime fechaInicio, LocalDateTime fechaFin, String ubicacion, String direccion, String imagen, Usuario organizador) {
 
+        // Comprobar que la fecha de fin sea posterior a la fecha de inicio
+        if (fechaFin != null && !fechaFin.isAfter(fechaInicio)) {
+            throw new IllegalArgumentException("La fecha de fin debe ser posterior a la fecha de inicio.");
+        }
+
         Evento evento = new Evento(titulo, descripcion, fechaInicio, fechaFin, ubicacion, direccion, imagen, organizador);
 
         return eventoRepository.save(evento);
     }
+
 
     // Obtener todos los eventos publicados
     public List<Evento> obtenerEventosPublicados() {
@@ -59,10 +65,7 @@ public class EventoService {
     }
 
     // Actualizar los datos de un evento
-    public Evento actualizarEvento(Long id, Usuario organizador, String titulo, String descripcion,
-            LocalDateTime fechaInicio, LocalDateTime fechaFin, String ubicacion,
-            String direccion, String imagen) {
-
+    public Evento actualizarEvento(Long id, Usuario organizador, String titulo, String descripcion, LocalDateTime fechaInicio, LocalDateTime fechaFin, String ubicacion, String direccion, String imagen) {
         // Buscar el evento comprobando que pertenece al organizador
         Evento evento = eventoRepository.findByIdAndOrganizador(id, organizador)
                 .orElseThrow(() -> new IllegalArgumentException(
@@ -74,9 +77,9 @@ public class EventoService {
             throw new IllegalArgumentException("No se puede modificar un evento cancelado o finalizado.");
         }
 
-        // Comprobar que la fecha de fin no sea anterior a la fecha de inicio
-        if (fechaFin != null && fechaFin.isBefore(fechaInicio)) {
-            throw new IllegalArgumentException("La fecha de fin no puede ser anterior a la fecha de inicio.");
+        // Comprobar que la fecha de fin sea posterior a la fecha de inicio
+        if (fechaFin != null && !fechaFin.isAfter(fechaInicio)) {
+            throw new IllegalArgumentException("La fecha de fin debe ser posterior a la fecha de inicio.");
         }
 
         // Actualizar los datos del evento
@@ -87,6 +90,83 @@ public class EventoService {
         evento.setUbicacion(ubicacion.trim());
         evento.setDireccion(direccion.trim());
         evento.setImagen(imagen);
+
+        return eventoRepository.save(evento);
+    }
+
+    // Publicar un evento
+    public Evento publicarEvento(Long id, Usuario organizador) {
+
+        // Buscar el evento comprobando que pertenece al organizador
+        Evento evento = eventoRepository.findByIdAndOrganizador(id, organizador)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No se ha encontrado el evento o no pertenece al organizador."));
+
+        // Comprobar que el evento está en borrador
+        if (evento.getEstado() != Evento.EstadoEvento.BORRADOR) {
+            throw new IllegalArgumentException("Solo se pueden publicar eventos en borrador.");
+        }
+
+        // Comprobar que el evento todavía no ha comenzado
+        if (!evento.getFechaInicio().isAfter(LocalDateTime.now())) {
+            throw new IllegalArgumentException("No se puede publicar un evento cuya fecha de inicio ya ha pasado.");
+        }
+
+        // Cambiar el estado del evento a publicado
+        evento.setEstado(Evento.EstadoEvento.PUBLICADO);
+
+        return eventoRepository.save(evento);
+    }
+
+    // Cancelar un evento
+    public Evento cancelarEvento(Long id, Usuario organizador) {
+
+        // Buscar el evento comprobando que pertenece al organizador
+        Evento evento = eventoRepository.findByIdAndOrganizador(id, organizador)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No se ha encontrado el evento o no pertenece al organizador."));
+
+        // Comprobar que el evento no esté cancelado
+        if (evento.getEstado() == Evento.EstadoEvento.CANCELADO) {
+            throw new IllegalArgumentException("El evento ya está cancelado.");
+        }
+
+        // Comprobar que el evento no esté finalizado
+        if (evento.getEstado() == Evento.EstadoEvento.FINALIZADO) {
+            throw new IllegalArgumentException("No se puede cancelar un evento finalizado.");
+        }
+
+        // Cambiar el estado del evento a cancelado
+        evento.setEstado(Evento.EstadoEvento.CANCELADO);
+
+        return eventoRepository.save(evento);
+    }
+
+    // Finalizar un evento
+    public Evento finalizarEvento(Long id, Usuario organizador) {
+
+        // Buscar el evento comprobando que pertenece al organizador
+        Evento evento = eventoRepository.findByIdAndOrganizador(id, organizador)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No se ha encontrado el evento o no pertenece al organizador."));
+
+        // Comprobar que el evento está publicado
+        if (evento.getEstado() != Evento.EstadoEvento.PUBLICADO) {
+            throw new IllegalArgumentException("Solo se pueden finalizar eventos publicados.");
+        }
+
+        // Determinar la fecha a partir de la cual se puede finalizar
+        LocalDateTime fechaLimite = evento.getFechaFin() != null
+                ? evento.getFechaFin()
+                : evento.getFechaInicio();
+
+        // Comprobar que el evento ha alcanzado esa fecha
+        if (LocalDateTime.now().isBefore(fechaLimite)) {
+            throw new IllegalArgumentException("El evento todavía no puede finalizarse.");
+        }
+
+        // Cambiar el estado del evento a finalizado
+        evento.setEstado(Evento.EstadoEvento.FINALIZADO);
 
         return eventoRepository.save(evento);
     }
