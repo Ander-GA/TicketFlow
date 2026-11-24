@@ -33,6 +33,8 @@ public class EventoActualizacionDTO {
     @NotNull(message = "El aforo máximo es obligatorio")
     @Min(value = 1, message = "El aforo debe ser mayor que cero")
     private Integer aforoMaximo;
+    private LocalDateTime fechaInicioVentaGeneral;
+    private boolean fechaInicioVentaGeneralIncluida;
 
     public EventoActualizacionDTO() {
     }
@@ -91,5 +93,18 @@ public class EventoActualizacionDTO {
 
     public void setAforoMaximo(Integer aforoMaximo) {
         this.aforoMaximo = aforoMaximo;
+    }
+
+    public LocalDateTime getFechaInicioVentaGeneral() {
+        return fechaInicioVentaGeneral;
+    }
+
+    public void setFechaInicioVentaGeneral(LocalDateTime fechaInicioVentaGeneral) {
+        this.fechaInicioVentaGeneral = fechaInicioVentaGeneral;
+        this.fechaInicioVentaGeneralIncluida = true;
+    }
+
+    public boolean incluyeFechaInicioVentaGeneral() {
+        return fechaInicioVentaGeneralIncluida;
     }
 }

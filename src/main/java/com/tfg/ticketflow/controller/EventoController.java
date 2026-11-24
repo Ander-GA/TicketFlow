@@ -56,6 +56,7 @@ public class EventoController {
                         datos.getUbicacion(),
                         datos.getDireccion(),
                         datos.getAforoMaximo(),
+                        datos.getFechaInicioVentaGeneral(),
                         organizador
                 );
 
@@ -134,7 +135,9 @@ public class EventoController {
                         datos.getFechaFin(),
                         datos.getUbicacion(),
                         datos.getDireccion(),
-                        datos.getAforoMaximo()
+                        datos.getAforoMaximo(),
+                        datos.getFechaInicioVentaGeneral(),
+                        datos.incluyeFechaInicioVentaGeneral()
                 );
 
                 return ResponseEntity.ok(new EventoRespuestaDTO(evento));

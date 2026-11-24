@@ -42,11 +42,13 @@ import com.tfg.ticketflow.entity.TipoEntrada;
 import com.tfg.ticketflow.entity.Usuario;
 import com.tfg.ticketflow.exception.ConflictoNegocioException;
 import com.tfg.ticketflow.service.EventoService;
+import com.tfg.ticketflow.service.TipoEntradaService;
 
 class EventosApiTests extends ApiTestSupport {
 
     private static final String EMAIL = "organizador@example.test";
     @Autowired EventoService servicio;
+    @Autowired TipoEntradaService servicioTipos;
     @Autowired TransactionTemplate transacciones;
     private Usuario organizador;
     private LocalDateTime inicio;
@@ -137,6 +139,7 @@ class EventosApiTests extends ApiTestSupport {
     void validaTransicionesYVisibilidadAlPublicarRetirarYCancelar() throws Exception {
         String token = iniciarSesion(EMAIL, PASSWORD);
         Evento borrador = evento("Transiciones", "Bilbao", BORRADOR, 50);
+        guardarTipoGeneral(borrador);
         cambiarEstado(token, borrador, "retirar").andExpect(status().isConflict());
         cambiarEstado(token, borrador, "finalizar").andExpect(status().isConflict());
         cambiarEstado(token, borrador, "publicar").andExpect(status().isOk())
@@ -161,6 +164,8 @@ class EventosApiTests extends ApiTestSupport {
         Evento pasado = guardarEvento(organizador, "Pasado", "Bilbao", BORRADOR,
                 inicio.minusDays(3), null, 50);
         Evento sinAforo = evento("Sin aforo", "Bilbao", BORRADOR, null);
+        guardarTipoGeneral(pasado);
+        guardarTipoGeneral(sinAforo);
         cambiarEstado(token, pasado, "publicar").andExpect(status().isConflict());
         cambiarEstado(token, sinAforo, "publicar").andExpect(status().isConflict());
         editar(token, sinAforo, datosEvento(inicio, 50)).andExpect(status().isOk());
@@ -205,7 +210,9 @@ class EventosApiTests extends ApiTestSupport {
 
     @Test
     void dosEscriturasConcurrentesRevalidanElEstadoTrasLiberarElBloqueo() throws Exception {
-        Long id = evento("Concurrente", "Bilbao", BORRADOR, 50).getId();
+        Evento evento = evento("Concurrente", "Bilbao", BORRADOR, 50);
+        guardarTipoGeneral(evento);
+        Long id = evento.getId();
         CountDownLatch canceladoSinConfirmar = new CountDownLatch(1);
         CountDownLatch confirmarCancelacion = new CountDownLatch(1);
         CountDownLatch comienzaPublicacion = new CountDownLatch(1);
@@ -238,6 +245,45 @@ class EventosApiTests extends ApiTestSupport {
         }
 
         assertThat(eventos.findById(id).orElseThrow().getEstado()).isEqualTo(CANCELADO);
+    }
+
+    @Test
+    void reducirAforoRevalidaLasPlazasQueOtroCambioAcabaDeAsignar() throws Exception {
+        Long id = evento("Aforo concurrente", "Bilbao", BORRADOR, 100).getId();
+        CountDownLatch tipoSinConfirmar = new CountDownLatch(1);
+        CountDownLatch confirmarTipo = new CountDownLatch(1);
+        CountDownLatch comienzaEdicion = new CountDownLatch(1);
+
+        try (var ejecutor = Executors.newFixedThreadPool(2)) {
+            var altaTipo = ejecutor.submit(() -> transacciones.executeWithoutResult(estado -> {
+                servicioTipos.crearTipoEntrada(id, organizador, "General", null, BigDecimal.TEN, 60, null);
+                tipoSinConfirmar.countDown();
+                esperar(confirmarTipo);
+            }));
+
+            try {
+                esperar(tipoSinConfirmar);
+                var edicion = ejecutor.submit(() -> {
+                    comienzaEdicion.countDown();
+                    return servicio.actualizarEvento(id, organizador, "Aforo concurrente", "Descripción",
+                            inicio, null, "Bilbao", "Dirección", 50);
+                });
+                esperar(comienzaEdicion);
+                assertThatThrownBy(() -> edicion.get(250, TimeUnit.MILLISECONDS))
+                        .isInstanceOf(TimeoutException.class);
+
+                confirmarTipo.countDown();
+                altaTipo.get(5, TimeUnit.SECONDS);
+                assertThatThrownBy(() -> edicion.get(5, TimeUnit.SECONDS))
+                        .isInstanceOf(ExecutionException.class)
+                        .hasCauseInstanceOf(ConflictoNegocioException.class);
+            } finally {
+                confirmarTipo.countDown();
+            }
+        }
+
+        assertThat(tiposEntrada.sumarCantidadTotal(id)).isEqualTo(60L);
+        assertThat(eventos.findById(id).orElseThrow().getAforoMaximo()).isEqualTo(100);
     }
 
     @Test
@@ -280,6 +326,10 @@ class EventosApiTests extends ApiTestSupport {
 
     private Evento evento(String titulo, String ubicacion, Evento.EstadoEvento estado, Integer aforo) {
         return guardarEvento(organizador, titulo, ubicacion, estado, inicio, null, aforo);
+    }
+
+    private void guardarTipoGeneral(Evento evento) {
+        tiposEntrada.save(new TipoEntrada("General", null, BigDecimal.TEN, 10, evento));
     }
 
     private Map<String, Object> datosEvento(LocalDateTime fechaInicio, int aforo) {

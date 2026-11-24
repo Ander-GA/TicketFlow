@@ -17,6 +17,7 @@ public class EventoRespuestaDTO {
     private String direccion;
     private String imagen;
     private Integer aforoMaximo;
+    private LocalDateTime fechaInicioVentaGeneral;
     private LocalDateTime fechaCreacion;
     private EstadoEvento estado;
     private Long organizadorId;
@@ -32,6 +33,7 @@ public class EventoRespuestaDTO {
         this.direccion = evento.getDireccion();
         this.imagen = evento.getImagen();
         this.aforoMaximo = evento.getAforoMaximo();
+        this.fechaInicioVentaGeneral = evento.getFechaInicioVentaGeneral();
         this.fechaCreacion = evento.getFechaCreacion();
         this.estado = evento.getEstado();
         this.organizadorId = evento.getOrganizador().getId();
@@ -110,6 +112,14 @@ public class EventoRespuestaDTO {
 
     public void setAforoMaximo(Integer aforoMaximo) {
         this.aforoMaximo = aforoMaximo;
+    }
+
+    public LocalDateTime getFechaInicioVentaGeneral() {
+        return fechaInicioVentaGeneral;
+    }
+
+    public void setFechaInicioVentaGeneral(LocalDateTime fechaInicioVentaGeneral) {
+        this.fechaInicioVentaGeneral = fechaInicioVentaGeneral;
     }
 
     public LocalDateTime getFechaCreacion() {

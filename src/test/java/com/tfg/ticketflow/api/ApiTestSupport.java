@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.tfg.ticketflow.entity.Evento;
 import com.tfg.ticketflow.entity.Usuario;
 import com.tfg.ticketflow.repository.EventoRepository;
+import com.tfg.ticketflow.repository.ReservaRepository;
 import com.tfg.ticketflow.repository.TipoEntradaRepository;
 import com.tfg.ticketflow.repository.UsuarioRepository;
 
@@ -38,11 +39,13 @@ abstract class ApiTestSupport {
     @Autowired ObjectMapper json;
     @Autowired UsuarioRepository usuarios;
     @Autowired EventoRepository eventos;
+    @Autowired ReservaRepository reservas;
     @Autowired TipoEntradaRepository tiposEntrada;
     @Autowired PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void limpiarBaseDePruebas() {
+        reservas.deleteAllInBatch();
         tiposEntrada.deleteAllInBatch();
         eventos.deleteAllInBatch();
         usuarios.deleteAllInBatch();

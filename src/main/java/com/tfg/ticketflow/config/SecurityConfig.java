@@ -47,6 +47,11 @@ public class SecurityConfig {
 
                 .requestMatchers(
                         HttpMethod.GET,
+                        "/api/v1/eventos/*/tipos-entrada/gestion"
+                ).hasRole("ORGANIZADOR")
+
+                .requestMatchers(
+                        HttpMethod.GET,
                         "/api/v1/eventos/**"
                 ).permitAll()
 
@@ -85,6 +90,23 @@ public class SecurityConfig {
                         HttpMethod.PATCH,
                         "/api/v1/eventos/*/retirar"
                 ).hasRole("ORGANIZADOR")
+
+                .requestMatchers(
+                        HttpMethod.POST,
+                        "/api/v1/eventos/*/tipos-entrada"
+                ).hasRole("ORGANIZADOR")
+
+                .requestMatchers(
+                        HttpMethod.PATCH,
+                        "/api/v1/eventos/*/tipos-entrada/*/activo"
+                ).hasRole("ORGANIZADOR")
+
+                .requestMatchers(
+                        HttpMethod.DELETE,
+                        "/api/v1/eventos/*/tipos-entrada/*"
+                ).hasRole("ORGANIZADOR")
+
+                .requestMatchers("/api/v1/reservas/**").authenticated()
 
                 // Registro e inicio de sesión
                 .requestMatchers(

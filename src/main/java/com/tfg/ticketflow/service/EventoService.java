@@ -1,18 +1,22 @@
 
 package com.tfg.ticketflow.service;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.tfg.ticketflow.entity.Evento;
+import com.tfg.ticketflow.entity.Reserva.EstadoReserva;
 import com.tfg.ticketflow.entity.Usuario;
 import com.tfg.ticketflow.exception.ConflictoNegocioException;
 import com.tfg.ticketflow.exception.RecursoNoEncontradoException;
 import com.tfg.ticketflow.repository.EventoRepository;
+import com.tfg.ticketflow.repository.ReservaRepository;
 import com.tfg.ticketflow.repository.TipoEntradaRepository;
 
 @Service
@@ -20,13 +24,18 @@ public class EventoService {
 
     private final EventoRepository eventoRepository;
     private final TipoEntradaRepository tipoEntradaRepository;
+    private final ReservaRepository reservaRepository;
+    private final Clock clock;
 
     public EventoService(
             EventoRepository eventoRepository,
-            TipoEntradaRepository tipoEntradaRepository) {
+            TipoEntradaRepository tipoEntradaRepository,
+            ReservaRepository reservaRepository, Clock reservasClock) {
 
         this.eventoRepository = eventoRepository;
         this.tipoEntradaRepository = tipoEntradaRepository;
+        this.reservaRepository = reservaRepository;
+        this.clock = reservasClock;
     }
 
     // Buscar un evento por su identificador
@@ -44,12 +53,16 @@ public class EventoService {
             LocalDateTime fechaInicio, LocalDateTime fechaFin,
             String ubicacion, String direccion,
             Integer aforoMaximo, Usuario organizador) {
+        return crearEvento(titulo, descripcion, fechaInicio, fechaFin,
+                ubicacion, direccion, aforoMaximo, null, organizador);
+    }
 
-        if (fechaFin != null && !fechaFin.isAfter(fechaInicio)) {
-            throw new IllegalArgumentException(
-                    "La fecha de fin debe ser posterior a la fecha de inicio.");
-        }
+    public Evento crearEvento(String titulo, String descripcion,
+            LocalDateTime fechaInicio, LocalDateTime fechaFin,
+            String ubicacion, String direccion, Integer aforoMaximo,
+            LocalDateTime fechaInicioVentaGeneral, Usuario organizador) {
 
+        validarFechas(fechaInicio, fechaFin, fechaInicioVentaGeneral);
         validarAforo(aforoMaximo);
 
         Evento evento = new Evento(
@@ -63,6 +76,7 @@ public class EventoService {
                 aforoMaximo,
                 organizador
         );
+        evento.setFechaInicioVentaGeneral(fechaInicioVentaGeneral);
 
         return eventoRepository.save(evento);
     }
@@ -116,6 +130,16 @@ public class EventoService {
             LocalDateTime fechaInicio, LocalDateTime fechaFin,
             String ubicacion, String direccion,
             Integer aforoMaximo) {
+        return actualizarEvento(id, organizador, titulo, descripcion,
+                fechaInicio, fechaFin, ubicacion, direccion, aforoMaximo, null, false);
+    }
+
+    @Transactional
+    public Evento actualizarEvento(Long id, Usuario organizador,
+            String titulo, String descripcion,
+            LocalDateTime fechaInicio, LocalDateTime fechaFin,
+            String ubicacion, String direccion, Integer aforoMaximo,
+            LocalDateTime nuevaFechaVenta, boolean incluyeFechaVenta) {
 
         Evento evento =
                 eventoRepository.buscarParaModificar(id, organizador)
@@ -130,18 +154,33 @@ public class EventoService {
         }
 
         if (evento.getEstado() == Evento.EstadoEvento.PUBLICADO
-                && !fechaInicio.equals(evento.getFechaInicio())
-                && !fechaInicio.isAfter(LocalDateTime.now())) {
+                && fechaInicio != null && !fechaInicio.equals(evento.getFechaInicio())
+                && haLlegado(fechaInicio)) {
             throw new ConflictoNegocioException(
                     "La nueva fecha de inicio de un evento publicado debe ser futura.");
         }
 
-        if (fechaFin != null && !fechaFin.isAfter(fechaInicio)) {
-            throw new IllegalArgumentException(
-                    "La fecha de fin debe ser posterior a la fecha de inicio.");
+        LocalDateTime fechaVentaActual = evento.getFechaInicioVentaGeneral();
+        if (evento.getEstado() == Evento.EstadoEvento.PUBLICADO
+                && incluyeFechaVenta && !Objects.equals(nuevaFechaVenta, fechaVentaActual)) {
+            throw new ConflictoNegocioException(
+                    "No se puede cambiar la fecha general de venta de un evento publicado.");
         }
 
+        LocalDateTime fechaVenta = incluyeFechaVenta ? nuevaFechaVenta : fechaVentaActual;
+        validarFechas(fechaInicio, fechaFin, fechaVenta);
         validarAforo(aforoMaximo);
+
+        boolean cambiaFechaOUbicacion = !Objects.equals(fechaInicio, evento.getFechaInicio())
+                || !Objects.equals(fechaFin, evento.getFechaFin())
+                || !Objects.equals(ubicacion.trim(), evento.getUbicacion())
+                || !Objects.equals(direccion.trim(), evento.getDireccion());
+        if (cambiaFechaOUbicacion && hayCompromisos(id)) {
+            throw new ConflictoNegocioException(
+                    "No se pueden cambiar fechas ni ubicación con entradas comprometidas.");
+        }
+
+        validarFechasDeLosTipos(id, fechaInicio);
 
         // Evitar reducir el aforo por debajo de las plazas asignadas
         Long cantidadAsignada =
@@ -159,6 +198,7 @@ public class EventoService {
         evento.setUbicacion(ubicacion.trim());
         evento.setDireccion(direccion.trim());
         evento.setAforoMaximo(aforoMaximo);
+        evento.setFechaInicioVentaGeneral(fechaVenta);
 
         // No modificamos evento.getImagen()
 
@@ -180,7 +220,7 @@ public class EventoService {
                     "Solo se pueden publicar eventos en borrador.");
         }
 
-        if (!evento.getFechaInicio().isAfter(LocalDateTime.now())) {
+        if (haLlegado(evento.getFechaInicio())) {
             throw new ConflictoNegocioException(
                     "No se puede publicar un evento cuya fecha de inicio ya ha pasado.");
         }
@@ -189,6 +229,18 @@ public class EventoService {
                 || evento.getAforoMaximo() <= 0) {
             throw new ConflictoNegocioException(
                     "No se puede publicar un evento sin un aforo máximo válido.");
+        }
+
+        validarFechas(evento.getFechaInicio(), evento.getFechaFin(), evento.getFechaInicioVentaGeneral());
+        validarFechasDeLosTipos(id, evento.getFechaInicio());
+
+        if (!tipoEntradaRepository.existsByEventoIdAndActivoTrueAndCantidadTotalGreaterThan(id, 0)) {
+            throw new ConflictoNegocioException(
+                    "Debes configurar al menos un tipo de entrada activo con plazas antes de publicar.");
+        }
+
+        if (tipoEntradaRepository.sumarCantidadTotal(id) > evento.getAforoMaximo()) {
+            throw new ConflictoNegocioException("Las entradas asignadas superan el aforo.");
         }
 
         evento.setEstado(Evento.EstadoEvento.PUBLICADO);
@@ -216,6 +268,7 @@ public class EventoService {
                     "No se puede cancelar un evento finalizado.");
         }
 
+        reservaRepository.cancelarActivasDelEvento(id, EstadoReserva.ACTIVA, EstadoReserva.CANCELADA, clock.instant());
         evento.setEstado(Evento.EstadoEvento.CANCELADO);
 
         return eventoRepository.save(evento);
@@ -240,7 +293,7 @@ public class EventoService {
                 ? evento.getFechaFin()
                 : evento.getFechaInicio();
 
-        if (LocalDateTime.now().isBefore(fechaLimite)) {
+        if (!haLlegado(fechaLimite)) {
             throw new ConflictoNegocioException(
                     "El evento todavía no puede finalizarse.");
         }
@@ -265,9 +318,42 @@ public class EventoService {
                     "Solo se pueden retirar eventos publicados.");
         }
 
+        if (hayCompromisos(id)) {
+            throw new ConflictoNegocioException(
+                    "No se puede retirar el evento mientras tenga entradas comprometidas.");
+        }
+
         evento.setEstado(Evento.EstadoEvento.BORRADOR);
 
         return eventoRepository.save(evento);
+    }
+
+    private boolean haLlegado(LocalDateTime fecha) {
+        return !clock.instant().isBefore(fecha.atZone(clock.getZone()).toInstant());
+    }
+
+    private boolean hayCompromisos(Long id) {
+        return reservaRepository.contarCompromisosPorEvento(id,
+                EstadoReserva.ACTIVA, EstadoReserva.CONFIRMADA, clock.instant()) > 0;
+    }
+
+    private void validarFechas(LocalDateTime inicio, LocalDateTime fin, LocalDateTime fechaVenta) {
+        if (inicio == null) {
+            throw new IllegalArgumentException("La fecha de inicio es obligatoria.");
+        }
+        if (fin != null && !fin.isAfter(inicio)) {
+            throw new IllegalArgumentException("La fecha de fin debe ser posterior a la fecha de inicio.");
+        }
+        if (fechaVenta != null && !fechaVenta.isBefore(inicio)) {
+            throw new IllegalArgumentException("La venta general debe comenzar antes del inicio del evento.");
+        }
+    }
+
+    private void validarFechasDeLosTipos(Long eventoId, LocalDateTime inicio) {
+        if (tipoEntradaRepository.existsByEventoIdAndFechaInicioVentaGreaterThanEqual(eventoId, inicio)) {
+            throw new ConflictoNegocioException(
+                    "La venta de todos los tipos de entrada debe comenzar antes del inicio del evento.");
+        }
     }
 
     // Validar el aforo máximo

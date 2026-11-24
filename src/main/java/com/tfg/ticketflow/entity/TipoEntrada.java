@@ -2,6 +2,9 @@
 package com.tfg.ticketflow.entity;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+import org.hibernate.annotations.ColumnDefault;
 
 import jakarta.persistence.*;
 
@@ -34,6 +37,12 @@ public class TipoEntrada {
     @Column(nullable = false)
     private boolean activo;
 
+    private LocalDateTime fechaInicioVenta;
+
+    @Column(nullable = false)
+    @ColumnDefault("false")
+    private boolean condicionesBloqueadas;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "evento_id", nullable = false)
     private Evento evento;
@@ -46,11 +55,16 @@ public class TipoEntrada {
 
     public TipoEntrada(String nombre, String descripcion, BigDecimal precio,
             Integer cantidadTotal, Evento evento) {
+        this(nombre, descripcion, precio, cantidadTotal, null, evento);
+    }
 
+    public TipoEntrada(String nombre, String descripcion, BigDecimal precio,
+            Integer cantidadTotal, LocalDateTime fechaInicioVenta, Evento evento) {
         this.nombre = nombre;
         this.descripcion = descripcion;
         this.precio = precio;
         this.cantidadTotal = cantidadTotal;
+        this.fechaInicioVenta = fechaInicioVenta;
         this.activo = true;
         this.evento = evento;
     }
@@ -99,6 +113,22 @@ public class TipoEntrada {
 
     public void setActivo(boolean activo) {
         this.activo = activo;
+    }
+
+    public LocalDateTime getFechaInicioVenta() {
+        return fechaInicioVenta;
+    }
+
+    public void setFechaInicioVenta(LocalDateTime fechaInicioVenta) {
+        this.fechaInicioVenta = fechaInicioVenta;
+    }
+
+    public boolean isCondicionesBloqueadas() {
+        return condicionesBloqueadas;
+    }
+
+    public void bloquearCondiciones() {
+        this.condicionesBloqueadas = true;
     }
 
     public Evento getEvento() {

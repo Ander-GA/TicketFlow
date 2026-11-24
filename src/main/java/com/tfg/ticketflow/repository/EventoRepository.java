@@ -52,4 +52,8 @@ public interface EventoRepository extends JpaRepository<Evento, Long> {
     Optional<Evento> buscarParaModificar(
             @Param("id") Long id,
             @Param("organizador") Usuario organizador);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT e FROM Evento e WHERE e.id = :id")
+    Optional<Evento> bloquearPorId(@Param("id") Long id);
 }

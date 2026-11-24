@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
@@ -18,6 +19,7 @@ import com.tfg.ticketflow.entity.Evento;
 import com.tfg.ticketflow.entity.Usuario;
 import com.tfg.ticketflow.exception.ConflictoNegocioException;
 import com.tfg.ticketflow.repository.EventoRepository;
+import com.tfg.ticketflow.repository.ReservaRepository;
 import com.tfg.ticketflow.repository.TipoEntradaRepository;
 
 class EventoServiceTests {
@@ -26,7 +28,8 @@ class EventoServiceTests {
 
     private final EventoRepository eventos = mock(EventoRepository.class);
     private final TipoEntradaRepository tiposEntrada = mock(TipoEntradaRepository.class);
-    private final EventoService servicio = new EventoService(eventos, tiposEntrada);
+    private final EventoService servicio = new EventoService(eventos, tiposEntrada,
+            mock(ReservaRepository.class), Clock.systemDefaultZone());
     private final Usuario organizador = new Usuario();
     private final Evento evento = new Evento();
 

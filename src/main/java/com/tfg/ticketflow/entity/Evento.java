@@ -36,6 +36,7 @@ public class Evento {
     // Temporalmente nullable por los eventos existentes en MySQL
     @Column(name = "aforo_maximo")
     private Integer aforoMaximo;
+    private LocalDateTime fechaInicioVentaGeneral;
 
     @Column(nullable = false)
     private LocalDateTime fechaCreacion;
@@ -148,6 +149,14 @@ public class Evento {
 
     public void setAforoMaximo(Integer aforoMaximo) {
         this.aforoMaximo = aforoMaximo;
+    }
+
+    public LocalDateTime getFechaInicioVentaGeneral() {
+        return fechaInicioVentaGeneral;
+    }
+
+    public void setFechaInicioVentaGeneral(LocalDateTime fechaInicioVentaGeneral) {
+        this.fechaInicioVentaGeneral = fechaInicioVentaGeneral;
     }
 
     public LocalDateTime getFechaCreacion() {
