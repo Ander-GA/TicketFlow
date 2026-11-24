@@ -21,7 +21,10 @@ public class DataInitializer implements CommandLineRunner {
         private final EventoRepository eventoRepository;
         private final PasswordEncoder passwordEncoder;
 
-        public DataInitializer(UsuarioRepository usuarioRepository, EventoRepository eventoRepository, PasswordEncoder passwordEncoder) {
+        public DataInitializer(UsuarioRepository usuarioRepository,
+                EventoRepository eventoRepository,
+                PasswordEncoder passwordEncoder) {
+
                 this.usuarioRepository = usuarioRepository;
                 this.eventoRepository = eventoRepository;
                 this.passwordEncoder = passwordEncoder;
@@ -58,10 +61,9 @@ public class DataInitializer implements CommandLineRunner {
                 // Recuperar el organizador de prueba
                 Usuario organizador = usuarioRepository.findByEmail("organizador@ticketflow.com")
                         .orElseThrow(() -> new IllegalStateException(
-                                "No se ha encontrado el organizador de prueba."
-                        ));
+                                "No se ha encontrado el organizador de prueba."));
 
-                // Crear eventos de prueba
+                // Crear eventos de prueba con aforo
                 crearEventoSiNoExiste(
                         "Concierto de música en directo",
                         "Una noche de música en directo con diferentes artistas.",
@@ -70,6 +72,7 @@ public class DataInitializer implements CommandLineRunner {
                         "Bilbao",
                         "Bilbao Arena",
                         null,
+                        500,
                         organizador,
                         Evento.EstadoEvento.PUBLICADO
                 );
@@ -82,6 +85,7 @@ public class DataInitializer implements CommandLineRunner {
                         "Donostia",
                         "Plaza de la Trinidad",
                         null,
+                        1500,
                         organizador,
                         Evento.EstadoEvento.PUBLICADO
                 );
@@ -94,6 +98,7 @@ public class DataInitializer implements CommandLineRunner {
                         "Madrid",
                         "Palacio de Congresos",
                         null,
+                        300,
                         organizador,
                         Evento.EstadoEvento.PUBLICADO
                 );
@@ -106,6 +111,7 @@ public class DataInitializer implements CommandLineRunner {
                         "Bilbao",
                         "BEC - Barakaldo",
                         null,
+                        200,
                         organizador,
                         Evento.EstadoEvento.PUBLICADO
                 );
@@ -118,14 +124,18 @@ public class DataInitializer implements CommandLineRunner {
                         "Bilbao",
                         "Lugar pendiente de confirmar",
                         null,
+                        100,
                         organizador,
                         Evento.EstadoEvento.BORRADOR
                 );
         }
 
-        private void crearUsuarioSiNoExiste(String nombre, String apellidos,String email, String password, Usuario.Rol rol, String telefono) {
+        // Crear un usuario de prueba si no existe
+        private void crearUsuarioSiNoExiste(String nombre, String apellidos,
+                String email, String password, Usuario.Rol rol, String telefono) {
+
                 if (usuarioRepository.existsByEmail(email)) {
-                        return;
+                return;
                 }
 
                 String passwordHash = passwordEncoder.encode(password);
@@ -139,17 +149,24 @@ public class DataInitializer implements CommandLineRunner {
                         telefono
                 );
 
-                // Los usuarios de prueba tendrán el correo verificado.
                 usuario.setEmailVerificado(true);
 
                 usuarioRepository.save(usuario);
         }
 
-        private void crearEventoSiNoExiste(String titulo, String descripcion, LocalDateTime fechaInicio, LocalDateTime fechaFin, String ubicacion, String direccion, String imagen, Usuario organizador, Evento.EstadoEvento estado) {
+        // Crear un evento de prueba si no existe
+        private void crearEventoSiNoExiste(String titulo, String descripcion,
+                LocalDateTime fechaInicio, LocalDateTime fechaFin,
+                String ubicacion, String direccion, String imagen,
+                Integer aforoMaximo, Usuario organizador,
+                Evento.EstadoEvento estado) {
+
+                // Preservar los datos de cualquier evento existente.
                 if (eventoRepository.existsByTituloAndOrganizador(titulo, organizador)) {
                         return;
                 }
 
+                // Crear el evento con su aforo
                 Evento evento = new Evento(
                         titulo,
                         descripcion,
@@ -158,6 +175,7 @@ public class DataInitializer implements CommandLineRunner {
                         ubicacion,
                         direccion,
                         imagen,
+                        aforoMaximo,
                         organizador
                 );
 

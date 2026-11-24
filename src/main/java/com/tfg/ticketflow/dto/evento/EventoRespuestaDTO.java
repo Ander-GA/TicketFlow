@@ -3,8 +3,8 @@ package com.tfg.ticketflow.dto.evento;
 
 import java.time.LocalDateTime;
 
-import com.tfg.ticketflow.entity.Evento.EstadoEvento;
 import com.tfg.ticketflow.entity.Evento;
+import com.tfg.ticketflow.entity.Evento.EstadoEvento;
 
 public class EventoRespuestaDTO {
 
@@ -16,13 +16,13 @@ public class EventoRespuestaDTO {
     private String ubicacion;
     private String direccion;
     private String imagen;
+    private Integer aforoMaximo;
     private LocalDateTime fechaCreacion;
     private EstadoEvento estado;
     private Long organizadorId;
     private String organizadorNombre;
 
     public EventoRespuestaDTO(Evento evento) {
-
         this.id = evento.getId();
         this.titulo = evento.getTitulo();
         this.descripcion = evento.getDescripcion();
@@ -31,6 +31,7 @@ public class EventoRespuestaDTO {
         this.ubicacion = evento.getUbicacion();
         this.direccion = evento.getDireccion();
         this.imagen = evento.getImagen();
+        this.aforoMaximo = evento.getAforoMaximo();
         this.fechaCreacion = evento.getFechaCreacion();
         this.estado = evento.getEstado();
         this.organizadorId = evento.getOrganizador().getId();
@@ -38,6 +39,7 @@ public class EventoRespuestaDTO {
     }
 
     // Getters y setters
+
     public Long getId() {
         return id;
     }
@@ -100,6 +102,14 @@ public class EventoRespuestaDTO {
 
     public void setImagen(String imagen) {
         this.imagen = imagen;
+    }
+
+    public Integer getAforoMaximo() {
+        return aforoMaximo;
+    }
+
+    public void setAforoMaximo(Integer aforoMaximo) {
+        this.aforoMaximo = aforoMaximo;
     }
 
     public LocalDateTime getFechaCreacion() {

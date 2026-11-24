@@ -33,6 +33,10 @@ public class Evento {
     @Column(length = 500)
     private String imagen;
 
+    // Temporalmente nullable por los eventos existentes en MySQL
+    @Column(name = "aforo_maximo")
+    private Integer aforoMaximo;
+
     @Column(nullable = false)
     private LocalDateTime fechaCreacion;
 
@@ -42,6 +46,7 @@ public class Evento {
         CANCELADO,
         FINALIZADO
     }
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private EstadoEvento estado;
@@ -53,7 +58,10 @@ public class Evento {
     public Evento() {
     }
 
-    public Evento(String titulo, String descripcion, LocalDateTime fechaInicio, LocalDateTime fechaFin, String ubicacion, String direccion, String imagen, Usuario organizador) {
+    public Evento(String titulo, String descripcion,
+            LocalDateTime fechaInicio, LocalDateTime fechaFin,
+            String ubicacion, String direccion, String imagen,
+            Integer aforoMaximo, Usuario organizador) {
 
         this.titulo = titulo;
         this.descripcion = descripcion;
@@ -62,12 +70,14 @@ public class Evento {
         this.ubicacion = ubicacion;
         this.direccion = direccion;
         this.imagen = imagen;
+        this.aforoMaximo = aforoMaximo;
         this.fechaCreacion = LocalDateTime.now();
         this.estado = EstadoEvento.BORRADOR;
         this.organizador = organizador;
     }
 
     // Getters y setters
+
     public Long getId() {
         return id;
     }
@@ -124,13 +134,20 @@ public class Evento {
         this.direccion = direccion;
     }
 
-
     public String getImagen() {
         return imagen;
     }
 
     public void setImagen(String imagen) {
         this.imagen = imagen;
+    }
+
+    public Integer getAforoMaximo() {
+        return aforoMaximo;
+    }
+
+    public void setAforoMaximo(Integer aforoMaximo) {
+        this.aforoMaximo = aforoMaximo;
     }
 
     public LocalDateTime getFechaCreacion() {

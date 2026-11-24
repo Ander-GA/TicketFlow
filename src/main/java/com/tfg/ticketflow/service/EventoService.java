@@ -6,20 +6,27 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.tfg.ticketflow.entity.Evento;
 import com.tfg.ticketflow.entity.Usuario;
 import com.tfg.ticketflow.exception.ConflictoNegocioException;
 import com.tfg.ticketflow.exception.RecursoNoEncontradoException;
 import com.tfg.ticketflow.repository.EventoRepository;
+import com.tfg.ticketflow.repository.TipoEntradaRepository;
 
 @Service
 public class EventoService {
 
     private final EventoRepository eventoRepository;
+    private final TipoEntradaRepository tipoEntradaRepository;
 
-    public EventoService(EventoRepository eventoRepository) {
+    public EventoService(
+            EventoRepository eventoRepository,
+            TipoEntradaRepository tipoEntradaRepository) {
+
         this.eventoRepository = eventoRepository;
+        this.tipoEntradaRepository = tipoEntradaRepository;
     }
 
     // Buscar un evento por su identificador
@@ -33,24 +40,27 @@ public class EventoService {
     }
 
     // Crear un evento
-    public Evento crearEvento(String titulo, String descripcion, LocalDateTime fechaInicio,
-            LocalDateTime fechaFin, String ubicacion, String direccion, String imagen,
-            Usuario organizador) {
+    public Evento crearEvento(String titulo, String descripcion,
+            LocalDateTime fechaInicio, LocalDateTime fechaFin,
+            String ubicacion, String direccion,
+            Integer aforoMaximo, Usuario organizador) {
 
-        // Comprobar que la fecha de fin sea posterior a la fecha de inicio
         if (fechaFin != null && !fechaFin.isAfter(fechaInicio)) {
             throw new IllegalArgumentException(
                     "La fecha de fin debe ser posterior a la fecha de inicio.");
         }
 
+        validarAforo(aforoMaximo);
+
         Evento evento = new Evento(
-                titulo,
-                descripcion,
+                titulo.trim(),
+                descripcion.trim(),
                 fechaInicio,
                 fechaFin,
-                ubicacion,
-                direccion,
-                imagen,
+                ubicacion.trim(),
+                direccion.trim(),
+                null, // La imagen se sube por separado
+                aforoMaximo,
                 organizador
         );
 
@@ -59,13 +69,14 @@ public class EventoService {
 
     // Obtener todos los eventos publicados
     public List<Evento> obtenerEventosPublicados() {
-        return eventoRepository.findByEstado(Evento.EstadoEvento.PUBLICADO);
+        return eventoRepository.findByEstado(
+                Evento.EstadoEvento.PUBLICADO);
     }
 
     // Obtener eventos publicados aplicando filtros opcionales
-    public List<Evento> obtenerEventosPublicados(String titulo, String ubicacion) {
+    public List<Evento> obtenerEventosPublicados(
+            String titulo, String ubicacion) {
 
-        // Normalizar los filtros recibidos
         String tituloFiltro = (titulo == null || titulo.isBlank())
                 ? null : titulo.trim();
 
@@ -84,8 +95,9 @@ public class EventoService {
 
         Optional<Evento> evento = eventoRepository.findById(id);
 
-        // Comprobar que el evento existe y está publicado
-        if (evento.isEmpty() || evento.get().getEstado() != Evento.EstadoEvento.PUBLICADO) {
+        if (evento.isEmpty()
+                || evento.get().getEstado()
+                    != Evento.EstadoEvento.PUBLICADO) {
             return Optional.empty();
         }
 
@@ -97,141 +109,173 @@ public class EventoService {
         return eventoRepository.findByOrganizador(organizador);
     }
 
-    // Actualizar los datos de un evento
-    public Evento actualizarEvento(Long id, Usuario organizador, String titulo,
-            String descripcion, LocalDateTime fechaInicio, LocalDateTime fechaFin,
-            String ubicacion, String direccion, String imagen) {
+    // Actualizar los datos generales de un evento
+    @Transactional
+    public Evento actualizarEvento(Long id, Usuario organizador,
+            String titulo, String descripcion,
+            LocalDateTime fechaInicio, LocalDateTime fechaFin,
+            String ubicacion, String direccion,
+            Integer aforoMaximo) {
 
-        // Buscar el evento comprobando que pertenece al organizador
-        Evento evento = eventoRepository.findByIdAndOrganizador(id, organizador)
-                .orElseThrow(() -> new RecursoNoEncontradoException(
-                        "No se ha encontrado el evento o no pertenece al organizador."));
+        Evento evento =
+                eventoRepository.buscarParaModificar(id, organizador)
+                        .orElseThrow(() ->
+                                new RecursoNoEncontradoException(
+                                        "No se ha encontrado el evento o no pertenece al organizador."));
 
-        // Comprobar que el evento se puede modificar
         if (evento.getEstado() == Evento.EstadoEvento.CANCELADO
                 || evento.getEstado() == Evento.EstadoEvento.FINALIZADO) {
             throw new ConflictoNegocioException(
                     "No se puede modificar un evento cancelado o finalizado.");
         }
 
-        // Comprobar que la fecha de fin sea posterior a la fecha de inicio
+        if (evento.getEstado() == Evento.EstadoEvento.PUBLICADO
+                && !fechaInicio.equals(evento.getFechaInicio())
+                && !fechaInicio.isAfter(LocalDateTime.now())) {
+            throw new ConflictoNegocioException(
+                    "La nueva fecha de inicio de un evento publicado debe ser futura.");
+        }
+
         if (fechaFin != null && !fechaFin.isAfter(fechaInicio)) {
             throw new IllegalArgumentException(
                     "La fecha de fin debe ser posterior a la fecha de inicio.");
         }
 
-        // Actualizar los datos del evento
+        validarAforo(aforoMaximo);
+
+        // Evitar reducir el aforo por debajo de las plazas asignadas
+        Long cantidadAsignada =
+                tipoEntradaRepository.sumarCantidadTotal(id);
+
+        if (aforoMaximo < cantidadAsignada) {
+            throw new ConflictoNegocioException(
+                    "El aforo no puede ser inferior a las entradas ya asignadas.");
+        }
+
         evento.setTitulo(titulo.trim());
         evento.setDescripcion(descripcion.trim());
         evento.setFechaInicio(fechaInicio);
         evento.setFechaFin(fechaFin);
         evento.setUbicacion(ubicacion.trim());
         evento.setDireccion(direccion.trim());
-        evento.setImagen(imagen);
+        evento.setAforoMaximo(aforoMaximo);
+
+        // No modificamos evento.getImagen()
 
         return eventoRepository.save(evento);
     }
 
     // Publicar un evento
+    @Transactional
     public Evento publicarEvento(Long id, Usuario organizador) {
 
-        // Buscar el evento comprobando que pertenece al organizador
-        Evento evento = eventoRepository.findByIdAndOrganizador(id, organizador)
-                .orElseThrow(() -> new RecursoNoEncontradoException(
-                        "No se ha encontrado el evento o no pertenece al organizador."));
+        Evento evento =
+                eventoRepository.buscarParaModificar(id, organizador)
+                        .orElseThrow(() ->
+                                new RecursoNoEncontradoException(
+                                        "No se ha encontrado el evento o no pertenece al organizador."));
 
-        // Comprobar que el evento está en borrador
         if (evento.getEstado() != Evento.EstadoEvento.BORRADOR) {
             throw new ConflictoNegocioException(
                     "Solo se pueden publicar eventos en borrador.");
         }
 
-        // Comprobar que el evento todavía no ha comenzado
         if (!evento.getFechaInicio().isAfter(LocalDateTime.now())) {
             throw new ConflictoNegocioException(
                     "No se puede publicar un evento cuya fecha de inicio ya ha pasado.");
         }
 
-        // Cambiar el estado del evento a publicado
+        if (evento.getAforoMaximo() == null
+                || evento.getAforoMaximo() <= 0) {
+            throw new ConflictoNegocioException(
+                    "No se puede publicar un evento sin un aforo máximo válido.");
+        }
+
         evento.setEstado(Evento.EstadoEvento.PUBLICADO);
 
         return eventoRepository.save(evento);
     }
 
     // Cancelar un evento
+    @Transactional
     public Evento cancelarEvento(Long id, Usuario organizador) {
 
-        // Buscar el evento comprobando que pertenece al organizador
-        Evento evento = eventoRepository.findByIdAndOrganizador(id, organizador)
-                .orElseThrow(() -> new RecursoNoEncontradoException(
-                        "No se ha encontrado el evento o no pertenece al organizador."));
+        Evento evento =
+                eventoRepository.buscarParaModificar(id, organizador)
+                        .orElseThrow(() ->
+                                new RecursoNoEncontradoException(
+                                        "No se ha encontrado el evento o no pertenece al organizador."));
 
-        // Comprobar que el evento no esté cancelado
         if (evento.getEstado() == Evento.EstadoEvento.CANCELADO) {
             throw new ConflictoNegocioException(
                     "El evento ya está cancelado.");
         }
 
-        // Comprobar que el evento no esté finalizado
         if (evento.getEstado() == Evento.EstadoEvento.FINALIZADO) {
             throw new ConflictoNegocioException(
                     "No se puede cancelar un evento finalizado.");
         }
 
-        // Cambiar el estado del evento a cancelado
         evento.setEstado(Evento.EstadoEvento.CANCELADO);
 
         return eventoRepository.save(evento);
     }
 
     // Finalizar un evento
+    @Transactional
     public Evento finalizarEvento(Long id, Usuario organizador) {
 
-        // Buscar el evento comprobando que pertenece al organizador
-        Evento evento = eventoRepository.findByIdAndOrganizador(id, organizador)
-                .orElseThrow(() -> new RecursoNoEncontradoException(
-                        "No se ha encontrado el evento o no pertenece al organizador."));
+        Evento evento =
+                eventoRepository.buscarParaModificar(id, organizador)
+                        .orElseThrow(() ->
+                                new RecursoNoEncontradoException(
+                                        "No se ha encontrado el evento o no pertenece al organizador."));
 
-        // Comprobar que el evento está publicado
         if (evento.getEstado() != Evento.EstadoEvento.PUBLICADO) {
             throw new ConflictoNegocioException(
                     "Solo se pueden finalizar eventos publicados.");
         }
 
-        // Determinar la fecha a partir de la cual se puede finalizar
         LocalDateTime fechaLimite = evento.getFechaFin() != null
                 ? evento.getFechaFin()
                 : evento.getFechaInicio();
 
-        // Comprobar que el evento ha alcanzado esa fecha
         if (LocalDateTime.now().isBefore(fechaLimite)) {
             throw new ConflictoNegocioException(
                     "El evento todavía no puede finalizarse.");
         }
 
-        // Cambiar el estado del evento a finalizado
         evento.setEstado(Evento.EstadoEvento.FINALIZADO);
 
         return eventoRepository.save(evento);
     }
 
     // Retirar un evento publicado
+    @Transactional
     public Evento retirarEvento(Long id, Usuario organizador) {
 
-        // Buscar el evento comprobando que pertenece al organizador
-        Evento evento = eventoRepository.findByIdAndOrganizador(id, organizador)
-                .orElseThrow(() -> new RecursoNoEncontradoException(
-                        "No se ha encontrado el evento o no pertenece al organizador."));
+        Evento evento =
+                eventoRepository.buscarParaModificar(id, organizador)
+                        .orElseThrow(() ->
+                                new RecursoNoEncontradoException(
+                                        "No se ha encontrado el evento o no pertenece al organizador."));
 
-        // Comprobar que el evento esté publicado
         if (evento.getEstado() != Evento.EstadoEvento.PUBLICADO) {
             throw new ConflictoNegocioException(
                     "Solo se pueden retirar eventos publicados.");
         }
 
-        // Cambiar el estado del evento a borrador
         evento.setEstado(Evento.EstadoEvento.BORRADOR);
 
         return eventoRepository.save(evento);
+    }
+
+    // Validar el aforo máximo
+    private void validarAforo(Integer aforoMaximo) {
+
+        if (aforoMaximo == null || aforoMaximo <= 0) {
+            throw new IllegalArgumentException(
+                    "El aforo máximo debe ser mayor que cero.");
+        }
     }
 }

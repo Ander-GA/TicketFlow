@@ -5,11 +5,14 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.tfg.ticketflow.entity.Evento;
 import com.tfg.ticketflow.entity.Usuario;
+
+import jakarta.persistence.LockModeType;
 
 public interface EventoRepository extends JpaRepository<Evento, Long> {
 
@@ -18,6 +21,9 @@ public interface EventoRepository extends JpaRepository<Evento, Long> {
 
     // Comprobar si un organizador ya tiene un evento con ese título
     boolean existsByTituloAndOrganizador(String titulo, Usuario organizador);
+
+    // Buscar un evento por título y organizador
+    Optional<Evento> findByTituloAndOrganizador(String titulo, Usuario organizador);
 
     // Buscar todos los eventos de un organizador
     List<Evento> findByOrganizador(Usuario organizador);
@@ -37,4 +43,13 @@ public interface EventoRepository extends JpaRepository<Evento, Long> {
             @Param("titulo") String titulo,
             @Param("ubicacion") String ubicacion);
 
+    // Bloquear un evento durante una operación de modificación
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT e FROM Evento e
+            WHERE e.id = :id AND e.organizador = :organizador
+            """)
+    Optional<Evento> buscarParaModificar(
+            @Param("id") Long id,
+            @Param("organizador") Usuario organizador);
 }

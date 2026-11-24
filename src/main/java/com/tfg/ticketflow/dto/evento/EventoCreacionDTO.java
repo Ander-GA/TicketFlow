@@ -3,6 +3,7 @@ package com.tfg.ticketflow.dto.evento;
 
 import java.time.LocalDateTime;
 
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -29,13 +30,12 @@ public class EventoCreacionDTO {
     @Size(max = 255, message = "La dirección no puede superar los 255 caracteres")
     private String direccion;
 
-    @Size(max = 500, message = "La imagen no puede superar los 500 caracteres")
-    private String imagen;
+    @NotNull(message = "El aforo máximo es obligatorio")
+    @Min(value = 1, message = "El aforo debe ser mayor que cero")
+    private Integer aforoMaximo;
 
     public EventoCreacionDTO() {
     }
-
-    // Getters y setters
 
     public String getTitulo() {
         return titulo;
@@ -85,11 +85,11 @@ public class EventoCreacionDTO {
         this.direccion = direccion;
     }
 
-    public String getImagen() {
-        return imagen;
+    public Integer getAforoMaximo() {
+        return aforoMaximo;
     }
 
-    public void setImagen(String imagen) {
-        this.imagen = imagen;
+    public void setAforoMaximo(Integer aforoMaximo) {
+        this.aforoMaximo = aforoMaximo;
     }
 }
